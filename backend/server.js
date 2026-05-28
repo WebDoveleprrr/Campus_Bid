@@ -23,9 +23,6 @@ connectDB().then(() => {
 });
 
 const allowedOrigins = [
-  'https://campus-bid-git-main-rohit-frontend.vercel.app',
-  'https://campus-bid-theta.vercel.app',
-  'https://campus-b5nlkgvz3-rohit-frontend.vercel.app',
   'http://localhost:5173',
   'http://127.0.0.1:5173',
   'http://localhost:3000',
@@ -36,7 +33,8 @@ const app = express();
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) === -1) {
+    const isAllowed = allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.onrender.com');
+    if (!isAllowed) {
       return callback(new Error('CORS Error: Origin not allowed'), false);
     }
     return callback(null, true);
@@ -70,7 +68,8 @@ const io = new Server(server, {
   cors: {
     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
-      if (allowedOrigins.indexOf(origin) === -1) {
+      const isAllowed = allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.onrender.com');
+      if (!isAllowed) {
         return callback(new Error('CORS Error'), false);
       }
       return callback(null, true);
