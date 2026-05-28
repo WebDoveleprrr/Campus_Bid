@@ -7,6 +7,7 @@
   <title>CampusBID</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="/src/style.css" />
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 
 <body class="min-h-screen flex flex-col items-center bg-background text-primary">
@@ -112,6 +113,11 @@
                 </div>
               </div>
             </form>
+
+            <div class="mt-8 pt-6 border-t border-gray-100 flex flex-col items-center justify-center">
+              <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Or continue with</p>
+              <div id="google-signin-btn" class="w-full flex justify-center"></div>
+            </div>
           </div>
 
           <!-- OTP Card stays within the same container width -->

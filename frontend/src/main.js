@@ -537,6 +537,67 @@ document.addEventListener('DOMContentLoaded', () => {
         if (obRemovePic) obRemovePic.checked = false;
     };
 
+    // --- Google OAuth Sign In ---
+    const initGoogleSignIn = () => {
+        const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+        if (!googleClientId) {
+            console.warn('⚠️ Google Client ID is not configured in VITE_GOOGLE_CLIENT_ID. Google Sign-In button will not render.');
+            return;
+        }
+
+        if (typeof google === 'undefined') {
+            setTimeout(initGoogleSignIn, 500);
+            return;
+        }
+
+        google.accounts.id.initialize({
+            client_id: googleClientId,
+            callback: handleGoogleCredentialResponse
+        });
+
+        google.accounts.id.renderButton(
+            document.getElementById("google-signin-btn"),
+            { 
+                theme: "outline", 
+                size: "large", 
+                width: 320, 
+                shape: "pill",
+                text: "continue_with"
+            }
+        );
+    };
+
+    const handleGoogleCredentialResponse = async (response) => {
+        const submitBtn = document.getElementById('auth-submit');
+        try {
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = "Authenticating...";
+            }
+
+            const data = await apiFetch('/auth/google', {
+                method: 'POST',
+                body: JSON.stringify({ credential: response.credential })
+            });
+
+            currentUser = parseUserFromResponse(data);
+            currentToken = data.token;
+            localStorage.setItem('user', JSON.stringify(currentUser));
+            localStorage.setItem('token', currentToken);
+
+            showToast(`Successfully signed in via Google! Welcome, @${currentUser.username}!`, true);
+            clearAuthFields();
+            postAuthRedirect();
+        } catch (err) {
+            showToast(err.message, true);
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = isLoginMode ? 'Sign In Now' : 'Register';
+            }
+        }
+    };
+
     const init = async () => {
         const storedUser = localStorage.getItem('user');
         if (storedUser && currentToken) {
@@ -551,6 +612,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             switchView('auth');
         }
+        initGoogleSignIn();
     };
 
     // --- Auth Logic ---

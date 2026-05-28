@@ -4,7 +4,8 @@ const OTP = require('../models/OTP');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const mailer = require('../utils/mailer');
-const protect = require('../middleware/authMiddleware');
+const { OAuth2Client } = require('google-auth-library');
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const router = express.Router();
 
@@ -211,6 +212,73 @@ router.get('/profile/:id', protect, async (req, res) => {
     res.json(user);
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+router.post('/google', async (req, res) => {
+  const { credential } = req.body;
+  if (!credential) {
+    return res.status(400).json({ message: 'Credential token is required' });
+  }
+
+  try {
+    const ticket = await client.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    
+    const payload = ticket.getPayload();
+    const { sub: googleId, email, name, picture } = payload;
+    
+    let user = await User.findOne({ 
+      $or: [
+        { googleId: googleId },
+        { email: email }
+      ]
+    });
+
+    if (!user) {
+      const adjectives = ['Ninja', 'Swift', 'Epic', 'Chill', 'Savage', 'Crypto', 'Alpha', 'Neon', 'Cyber', 'Urban', 'Cool'];
+      const nouns = ['Bidder', 'Trader', 'Sniper', 'Hustler', 'Mogul', 'Knight', 'Wizard', 'Ghost', 'Rider', 'Phantom'];
+      const randomAdjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+      const randomNoun = nouns[Math.floor(Math.random() * nouns.length)];
+      const username = `${randomAdjective}${randomNoun}_${Math.floor(Math.random() * 1000)}`;
+
+      user = await User.create({
+        username,
+        email,
+        googleId,
+        authProvider: 'google',
+        isVerified: true,
+        profilePic: picture || ''
+      });
+    } else {
+      if (!user.googleId) {
+        user.googleId = googleId;
+        user.authProvider = 'google';
+        if (picture && !user.profilePic) {
+          user.profilePic = picture;
+        }
+        await user.save();
+      }
+    }
+
+    res.json({
+      _id: user._id,
+      username: user.username,
+      token: generateToken(user._id),
+      onboarded: user.onboarded,
+      profilePic: user.profilePic,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      middleName: user.middleName,
+      mobileNumber: user.mobileNumber,
+      hostelName: user.hostelName,
+      hostelBlock: user.hostelBlock,
+      roomNumber: user.roomNumber
+    });
+
+  } catch (error) {
+    console.error('Google OAuth verification failed:', error);
+    res.status(401).json({ message: 'Google authentication failed' });
   }
 });
 
