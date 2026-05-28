@@ -1,0 +1,102 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background text-primary antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-surface rounded-[2rem] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white;
+  }
+  .input-field {
+    @apply w-full px-5 py-4 rounded-2xl border-none bg-background focus:bg-white focus:ring-2 focus:ring-accent transition-all duration-300 outline-none text-primary placeholder-secondary shadow-inner;
+  }
+  .btn-primary {
+    @apply px-6 py-3 bg-accent text-white rounded-full font-bold hover:bg-gray-800 transition-all duration-300 shadow-md hover:shadow-lg active:scale-95 text-center cursor-pointer;
+  }
+  .btn-secondary {
+    @apply px-6 py-3 bg-surface text-primary rounded-full font-bold hover:bg-gray-50 border border-border transition-all duration-300 active:scale-95 text-center cursor-pointer;
+  }
+  .card {
+    @apply bg-surface rounded-[2rem] border border-white shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-500 overflow-hidden;
+  }
+  .nav-pill {
+    @apply px-4 py-2 text-secondary font-medium rounded-full cursor-pointer transition-all duration-300 hover:bg-gray-200 hover:text-primary flex items-center gap-2;
+  }
+  .nav-pill.active {
+    @apply bg-accent text-white shadow-lg scale-105;
+  }
+}
+
+/* Micro animations */
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+.animate-delay-1 { animation-delay: 0.1s; opacity: 0; }
+.animate-delay-2 { animation-delay: 0.2s; opacity: 0; }
+.animate-delay-3 { animation-delay: 0.3s; opacity: 0; }
+
+.animate-slide-up {
+  animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.flash-highlight {
+  animation: flashBg 1.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes flashBg {
+  0% { background-color: #fce7f3; }
+  100% { background-color: transparent; }
+}
+@keyframes scaleUp {
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.animate-scale-up {
+  animation: scaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.user-name-clickable {
+  @apply cursor-pointer hover:text-accent hover:underline transition-colors duration-200;
+}
+
+.active-mode {
+  @apply text-accent border-accent bg-white/10 shadow-lg scale-105;
+}
+
+.trade-card {
+  @apply bg-background border-none rounded-xl p-4 shadow-sm my-2 relative overflow-hidden;
+}
+
+.trade-card.accepted {
+  @apply border-emerald-500/50 bg-emerald-900/20;
+}
+
+.trade-card.rejected {
+  @apply border-red-500/50 bg-red-900/20 opacity-70;
+}
+
+@keyframes cursorBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.typing-cursor {
+  animation: cursorBlink 1s step-end infinite;
+}
