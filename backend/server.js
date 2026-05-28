@@ -22,8 +22,27 @@ connectDB().then(() => {
   seedData(); // Run seeder after db connection
 });
 
+const allowedOrigins = [
+  'https://campus-bid-theta.vercel.app',
+  'https://campus-b5nlkgvz3-rohit-frontend.vercel.app',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000'
+];
+
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  credentials: true
+}));
 app.use(express.json());
 
 app.get('/api/seed', async (req, res) => {
@@ -45,7 +64,11 @@ app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
 
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: '*' }
+  cors: {
+    origin: allowedOrigins,
+    methods: ['GET', 'POST'],
+    credentials: true
+  }
 });
 app.set('io', io);
 

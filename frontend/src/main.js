@@ -11,6 +11,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let activeDashTab = 'all';
     let activeDashMode = 'auction'; // 'auction' or 'barter'
 
+    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || (
+        window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? ''
+            : 'https://campus-bid.onrender.com'
+    );
+
     // --- DOM Elements ---
     const views = {
         auth: document.getElementById('auth-view'),
@@ -50,8 +56,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!currentUser) return;
         const imgEl = document.getElementById('nav-profile-img');
         if (!imgEl) return;
-        const defaultAvatar = `https://ui-avatars.com/api/?name=${currentUser.firstName || currentUser.username}&background=random`;
-        imgEl.src = currentUser.profilePic ? `/api${currentUser.profilePic}` : defaultAvatar;
+        const defaultAvatar = `https://ui-avatars.com/api/?name=${currentUser?.firstName || currentUser?.username || ''}&background=random`;
+        imgEl.src = currentUser?.profilePic ? `${BACKEND_URL}/api${currentUser.profilePic}` : defaultAvatar;
 
         const hoverName = document.getElementById('hover-name');
         if (hoverName) hoverName.textContent = `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || currentUser.username;
@@ -445,17 +451,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const apiFetch = async (endpoint, options = {}) => {
         const headers = { 'Content-Type': 'application/json' };
         if (currentToken) headers['Authorization'] = `Bearer ${currentToken}`;
-        const response = await fetch(`/api${endpoint}`, { ...options, headers });
+        
+        let response;
+        try {
+            response = await fetch(`${BACKEND_URL}/api${endpoint}`, { ...options, headers });
+        } catch (err) {
+            throw new Error('Backend server is unreachable. Render free tier may be sleeping, please wait up to 1 minute.');
+        }
 
         let data;
         try {
             const text = await response.text();
             data = JSON.parse(text);
         } catch (err) {
-            throw new Error(response.ok ? 'Invalid response format' : 'Backend server is unreachable. Please ensure the backend is running.');
+            throw new Error(response.ok ? 'Invalid response format' : 'Backend server returned an error page.');
         }
 
-        if (!response.ok) throw new Error(data.message || 'API Error');
+        if (!response.ok) throw new Error(data?.message || 'API Error');
         return data;
     };
 
@@ -844,7 +856,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (tradersEl) {
                 tradersEl.innerHTML = '';
                 topTraders.forEach((t, i) => {
-                    const avatar = t.profilePic ? `/api${t.profilePic}` : `https://ui-avatars.com/api/?name=${t.firstName || t.username}&background=random`;
+                    const avatar = t.profilePic ? `${BACKEND_URL}/api${t.profilePic}` : `https://ui-avatars.com/api/?name=${t?.firstName || t?.username || ''}&background=random`;
                     tradersEl.innerHTML += `
           <li class="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition">
             <div class="flex items-center gap-3">
@@ -886,11 +898,16 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('deleteProfilePic', removePic ? 'true' : 'false');
 
         try {
-            const response = await fetch('/api/auth/profile', {
-                method: 'PUT',
-                headers: { 'Authorization': `Bearer ${currentToken}` },
-                body: formData
-            });
+            let response;
+            try {
+                response = await fetch(`${BACKEND_URL}/api/auth/profile`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${currentToken}` },
+                    body: formData
+                });
+            } catch (err) {
+                throw new Error('Unable to connect to server. Render service may be sleeping.');
+            }
 
             let data;
             try { data = await response.json(); } catch (ex) { /* ignore */ }
@@ -914,11 +931,16 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('deleteProfilePic', 'false');
 
         try {
-            const response = await fetch('/api/auth/profile', {
-                method: 'PUT',
-                headers: { 'Authorization': `Bearer ${currentToken}` },
-                body: formData
-            });
+            let response;
+            try {
+                response = await fetch(`${BACKEND_URL}/api/auth/profile`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${currentToken}` },
+                    body: formData
+                });
+            } catch (err) {
+                throw new Error('Unable to connect to server. Render service may be sleeping.');
+            }
 
             let data;
             try { data = await response.json(); } catch (ex) { /* ignore */ }
@@ -940,9 +962,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('profile-container')?.addEventListener('click', () => {
         if (!currentUser) return;
 
-        const defaultAvatar = `https://ui-avatars.com/api/?name=${currentUser.firstName || currentUser.username}&background=random`;
+        const defaultAvatar = `https://ui-avatars.com/api/?name=${currentUser?.firstName || currentUser?.username || ''}&background=random`;
         const modalPic = document.getElementById('modal-pic');
-        if (modalPic) modalPic.src = currentUser.profilePic ? `/api${currentUser.profilePic}` : defaultAvatar;
+        if (modalPic) modalPic.src = currentUser?.profilePic ? `${BACKEND_URL}/api${currentUser.profilePic}` : defaultAvatar;
 
         const modalName = document.getElementById('modal-name');
         if (modalName) modalName.textContent = `${currentUser.firstName || ''} ${currentUser.middleName || ''} ${currentUser.lastName || ''}`.replace(/\s+/g, ' ').trim() || currentUser.username;
@@ -1001,9 +1023,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const obRemovePicContainer = document.getElementById('ob-remove-pic-container');
         const obRemovePic = document.getElementById('ob-remove-pic');
 
-        if (currentUser.profilePic) {
+        if (currentUser?.profilePic) {
             if (obCurrentPic) {
-                obCurrentPic.src = `/api${currentUser.profilePic}`;
+                obCurrentPic.src = `${BACKEND_URL}/api${currentUser.profilePic}`;
                 obCurrentPic.classList.remove('hidden');
             }
             obRemovePicContainer?.classList.remove('hidden');
@@ -1057,14 +1079,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const imageHtml = `
       <div class="relative w-full h-40 mb-4 overflow-hidden rounded-xl bg-gray-100">
         ${p.image && p.image !== 'placeholder.jpg'
-                    ? `<img src="/api${p.image}" class="w-full h-full object-cover" />`
+                    ? `<img src="${BACKEND_URL}/api${p.image}" class="w-full h-full object-cover" />`
                     : `<div class="w-full h-full flex items-center justify-center text-gray-400">Image</div>`}
         ${watchlistHtml}
       </div>
     `;
 
             // FIX: removed spaces around = in template literal interpolation
-            const sellerPic = p.seller && (p.seller.profilePic ? `/api${p.seller.profilePic}` : `https://ui-avatars.com/api/?name=${p.seller?.firstName || p.seller?.username}&background=random`);
+            const sellerPic = p.seller && (p.seller.profilePic ? `${BACKEND_URL}/api${p.seller.profilePic}` : `https://ui-avatars.com/api/?name=${p.seller?.firstName || p.seller?.username || ''}&background=random`);
             const sellerHtml = `
       <div class="flex items-center gap-2 mb-3 mt-2 pb-3 border-b border-gray-100">
         <img src="${sellerPic}" class="w-6 h-6 rounded-full object-cover shrink-0 bg-white border border-gray-200">
@@ -1266,11 +1288,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const headers = {};
             if (currentToken) headers['Authorization'] = `Bearer ${currentToken}`;
 
-            const response = await fetch('/api/products', {
-                method: 'POST',
-                headers,
-                body: formData
-            });
+            let response;
+            try {
+                response = await fetch(`${BACKEND_URL}/api/products`, {
+                    method: 'POST',
+                    headers,
+                    body: formData
+                });
+            } catch (err) {
+                throw new Error('Unable to connect to server. Render service may be sleeping.');
+            }
 
             const data = await response.json();
             if (!response.ok) throw new Error(data.message || 'API Error');
@@ -1327,14 +1354,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const category = document.getElementById('edit-prod-category')?.value;
 
         try {
-            const response = await fetch(`/api/products/${currentProduct._id}/details`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${currentToken}`
-                },
-                body: JSON.stringify({ title, description, category })
-            });
+            let response;
+            try {
+                response = await fetch(`${BACKEND_URL}/api/products/${currentProduct._id}/details`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentToken}`
+                    },
+                    body: JSON.stringify({ title, description, category })
+                });
+            } catch (err) {
+                throw new Error('Unable to connect to server. Render service may be sleeping.');
+            }
 
             const data = await response.json();
             if (!response.ok) throw new Error(data.message || 'API Error');
@@ -1387,10 +1419,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const detailSellerUsername = document.getElementById('detail-seller-username');
             if (detailSellerUsername) detailSellerUsername.textContent = `@${product.seller.username}`;
 
-            const defaultAvatar = `https://ui-avatars.com/api/?name=${product.seller.firstName || product.seller.username}&background=random`;
+            const defaultAvatar = `https://ui-avatars.com/api/?name=${product.seller?.firstName || product.seller?.username || ''}&background=random`;
             const sellerPicEl = document.getElementById('detail-seller-pic');
             if (sellerPicEl) {
-                sellerPicEl.src = product.seller.profilePic ? `/api${product.seller.profilePic}` : defaultAvatar;
+                sellerPicEl.src = product.seller?.profilePic ? `${BACKEND_URL}/api${product.seller.profilePic}` : defaultAvatar;
                 sellerPicEl.classList.add('cursor-pointer', 'hover:border-accent', 'transition-all');
                 sellerPicEl.onclick = (e) => {
                     e.stopPropagation();
@@ -1410,7 +1442,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const imgElem = document.getElementById('detail-image');
             const placeholder = document.getElementById('detail-image-placeholder');
             if (product.image && product.image !== 'placeholder.jpg') {
-                if (imgElem) { imgElem.src = `/api${product.image}`; imgElem.classList.remove('hidden'); }
+                if (imgElem) { imgElem.src = `${BACKEND_URL}/api${product.image}`; imgElem.classList.remove('hidden'); }
                 placeholder?.classList.add('hidden');
             } else {
                 imgElem?.classList.add('hidden');
@@ -1652,18 +1684,23 @@ document.addEventListener('DOMContentLoaded', () => {
             const headers = {};
             if (currentToken) headers['Authorization'] = `Bearer ${currentToken}`;
 
-            const res = await fetch(`/api/products/${currentProduct._id}/image`, {
-                method: 'POST',
-                headers,
-                body: formData
-            });
+            let res;
+            try {
+                res = await fetch(`${BACKEND_URL}/api/products/${currentProduct._id}/image`, {
+                    method: 'POST',
+                    headers,
+                    body: formData
+                });
+            } catch (err) {
+                throw new Error('Unable to connect to server. Render service may be sleeping.');
+            }
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || 'Upload failed');
 
             const imgElem = document.getElementById('detail-image');
             const placeholder = document.getElementById('detail-image-placeholder');
             if (imgElem) {
-                imgElem.src = `/api${data.image}`;
+                imgElem.src = `${BACKEND_URL}/api${data.image}`;
                 imgElem.classList.remove('hidden');
             }
             placeholder?.classList.add('hidden');
@@ -1706,9 +1743,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const miniCardUsername = document.getElementById('mini-card-username');
             if (miniCardUsername) miniCardUsername.textContent = `@${user.username}`;
 
-            const defaultAvatar = `https://ui-avatars.com/api/?name=${user.firstName || user.username}&background=random`;
+            const defaultAvatar = `https://ui-avatars.com/api/?name=${user.firstName || user.username || ''}&background=random`;
             const miniCardPic = document.getElementById('mini-card-pic');
-            if (miniCardPic) miniCardPic.src = user.profilePic ? `/api${user.profilePic}` : defaultAvatar;
+            if (miniCardPic) miniCardPic.src = user.profilePic ? `${BACKEND_URL}/api${user.profilePic}` : defaultAvatar;
 
             const hostel = user.hostelName || '';
             const block = user.hostelBlock || '';
@@ -1867,8 +1904,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     const el = document.createElement('div');
                     el.className = `p-3 mb-3 bg-white rounded-2xl shadow-sm border border-gray-100 cursor-pointer hover:border-accent transition flex items-center gap-4 group`;
 
-                    const defaultAvatar = `https://ui-avatars.com/api/?name=${buyer.firstName || buyer.username}&background=random`;
-                    const picUrl = buyer.profilePic ? `/api${buyer.profilePic}` : defaultAvatar;
+                    const defaultAvatar = `https://ui-avatars.com/api/?name=${buyer.firstName || buyer.username || ''}&background=random`;
+                    const picUrl = buyer.profilePic ? `${BACKEND_URL}/api${buyer.profilePic}` : defaultAvatar;
 
                     el.innerHTML = `
           <img src="${picUrl}" class="w-12 h-12 rounded-full object-cover border-2 border-gray-50 chat-list-avatar" data-userid="${buyer._id}">
