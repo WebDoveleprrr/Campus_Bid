@@ -213,6 +213,8 @@ router.get('/profile/:id', protect, async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
+});
+
 router.post('/google', async (req, res) => {
   const { credential } = req.body;
   if (!credential) {
