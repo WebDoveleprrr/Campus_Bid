@@ -456,7 +456,12 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             response = await fetch(`${BACKEND_URL}/api${endpoint}`, { ...options, headers });
         } catch (err) {
-            throw new Error('Backend server is unreachable. Render free tier may be sleeping, please wait up to 1 minute.');
+            console.error('Connection error:', err);
+            throw new Error('[CONNECTION_ERROR] Backend server is unreachable. Please verify if the server is offline or Render is spinning up.');
+        }
+
+        if (response.status === 404) {
+            throw new Error(`[NOT_FOUND] Route not found (404) on endpoint: ${endpoint}`);
         }
 
         let data;
@@ -464,10 +469,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const text = await response.text();
             data = JSON.parse(text);
         } catch (err) {
-            throw new Error(response.ok ? 'Invalid response format' : 'Backend server returned an error page.');
+            throw new Error(`[INVALID_RESPONSE] Server returned an invalid response format (Status: ${response.status}).`);
         }
 
-        if (!response.ok) throw new Error(data?.message || 'API Error');
+        if (!response.ok) {
+            if (response.status === 401 || response.status === 403) {
+                throw new Error(`[AUTH_ERROR] ${data?.message || 'Unauthorized access/Invalid credentials.'}`);
+            }
+            if (response.status === 400) {
+                throw new Error(`[VALIDATION_ERROR] ${data?.message || 'Validation failed. Please check inputs.'}`);
+            }
+            throw new Error(`[API_ERROR] ${data?.message || 'An unexpected API error occurred.'}`);
+        }
         return data;
     };
 
