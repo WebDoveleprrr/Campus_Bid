@@ -24,17 +24,26 @@ const generateToken = (id) => {
 
 router.post('/send-otp', async (req, res) => {
   const { email } = req.body;
+  console.log(`[AUTH] Received send-otp request for: ${email}`);
   try {
-    if (!email) return res.status(400).json({ message: 'Email is required' });
+    if (!email) {
+      console.log(`[AUTH] send-otp failed: Email is required`);
+      return res.status(400).json({ message: 'Email is required' });
+    }
     
     const userExists = await User.findOne({ email });
-    if (userExists) return res.status(400).json({ message: 'User with this email already exists' });
+    if (userExists) {
+      console.log(`[AUTH] send-otp failed: User exists for ${email}`);
+      return res.status(400).json({ message: 'User with this email already exists' });
+    }
     
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
+        console.log(`[AUTH] send-otp failed: Invalid email format ${email}`);
         return res.status(400).json({ message: 'Please provide a valid email address format.' });
     }
 
+    console.log(`[AUTH] Resolving MX records for domain: ${email.split('@')[1]}`);
     try {
         const domain = email.split('@')[1];
         const dns = require('dns');
@@ -44,24 +53,35 @@ router.post('/send-otp', async (req, res) => {
         const mxRecords = await resolveMx(domain);
         if (!mxRecords || mxRecords.length === 0) throw new Error('No MX records');
     } catch (err) {
+        console.log(`[AUTH] send-otp failed: No MX records for ${email}`);
         return res.status(400).json({ message: 'This email domain does not exist or cannot receive emails.' });
     }
 
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    console.log(`[AUTH] Generated OTP: ${otpCode} for ${email}`);
     
     await OTP.deleteMany({ email }); // Clear older OTPs
     await OTP.create({ email, otp: otpCode });
     
-    await mailer.sendMail({
-        to: email,
-        subject: 'Your Registration OTP',
-        text: `Welcome to CampusBID! Your verification code is: ${otpCode}. It expires in 10 minutes.`,
-        html: `<h3>Welcome to CampusBID!</h3><p>Your verification code is: <b>${otpCode}</b>.</p><p>It expires in 10 minutes.</p>`
-    });
+    console.log(`[AUTH] Handing over to Mailer for email delivery...`);
+    try {
+        await mailer.sendMail({
+            to: email,
+            subject: 'Your Registration OTP',
+            text: `Welcome to CampusBID! Your verification code is: ${otpCode}. It expires in 10 minutes.`,
+            html: `<h3>Welcome to CampusBID!</h3><p>Your verification code is: <b>${otpCode}</b>.</p><p>It expires in 10 minutes.</p>`
+        });
+        console.log(`[AUTH] Mailer reported success for ${email}`);
+    } catch (mailErr) {
+        console.error(`[AUTH] Mailer failed for ${email}:`, mailErr);
+        return res.status(500).json({ message: 'Failed to deliver OTP email. Please verify if the email address is correct or try again.' });
+    }
 
-    res.json({ message: 'OTP successfully sent to your email.' });
+    console.log(`[AUTH] send-otp returning success response for ${email}`);
+    return res.json({ message: 'OTP successfully sent to your email.' });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error(`[AUTH] Unhandled send-otp exception:`, err);
+    return res.status(500).json({ message: err.message });
   }
 });
 
