@@ -1,77 +1,51 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
 class Mailer {
   constructor() {
-    this.transporter = null;
+    this.resend = null;
     this.isDummy = true;
     this.init();
   }
 
-  async init() {
+  init() {
     try {
-      if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-          // Use Real SMTP Details if provided in .env
-          this.transporter = nodemailer.createTransport({
-            host: 'smtp.gmail.com',
-            port: 587,
-            secure: false, // false for 587 (STARTTLS)
-            family: 4, // Force IPv4 resolution
-            auth: {
-              user: process.env.EMAIL_USER,
-              pass: process.env.EMAIL_PASS
-            },
-            tls: {
-              rejectUnauthorized: false
-            },
-            connectionTimeout: 10000, // 10 seconds max connection timeout
-            greetingTimeout: 10000,   // 10 seconds greeting timeout
-            socketTimeout: 10000      // 10 seconds socket timeout
-          });
-          this.isDummy = false;
-          console.log('✅ Real SMTP Mailer initialized securely via .env credentials.');
+      if (process.env.RESEND_API_KEY) {
+        this.resend = new Resend(process.env.RESEND_API_KEY);
+        this.isDummy = false;
+        console.log('✅ Resend Mailer initialized securely via RESEND_API_KEY.');
       } else {
-          // Fallback to Test
-          const account = await nodemailer.createTestAccount();
-          this.transporter = nodemailer.createTransport({
-            host: account.smtp.host,
-            port: account.smtp.port,
-            secure: account.smtp.secure,
-            auth: {
-              user: account.user,
-              pass: account.pass
-            },
-            connectionTimeout: 10000,
-            greetingTimeout: 10000,
-            socketTimeout: 10000
-          });
-          console.log('⚠️ Dummy Mailer initialized. (No real emails will be delivered. Add EMAIL_USER and EMAIL_PASS to .env to enable real delivery).');
+        console.log('⚠️ Resend Mailer API Key is not set in environment. (Dummy Mailer mode enabled - no real emails will be delivered).');
       }
     } catch (err) {
-      console.error('Failed to init mailer:', err);
+      console.error('Failed to init Resend mailer:', err);
     }
   }
 
   async sendMail(mailOptions) {
-    if (!this.transporter) {
-      console.log('[MAILER NOT READY]', mailOptions);
-      throw new Error('Mailer transporter is not ready.');
+    console.log(`[MAILER] Starting email send process using Resend to: ${mailOptions.to}`);
+    
+    if (this.isDummy) {
+      console.log(`[MAILER] [DUMMY MODE] Would send email to: ${mailOptions.to}. Subject: ${mailOptions.subject}`);
+      return { messageId: 'dummy_msg_id_' + Date.now() };
     }
-    
-    const sender = this.isDummy ? '"CampusBID Dummy" <noreply@campusbid.com>' : `"CampusBID" <${process.env.EMAIL_USER}>`;
-    
-    console.log(`[MAILER] Starting email send process to: ${mailOptions.to}`);
+
     try {
-      const info = await this.transporter.sendMail({
-         from: sender,
-         ...mailOptions
+      const response = await this.resend.emails.send({
+        from: 'CampusBID <onboarding@resend.dev>',
+        to: mailOptions.to,
+        subject: mailOptions.subject,
+        text: mailOptions.text,
+        html: mailOptions.html
       });
-      console.log(`[MAILER] Email successfully sent to: ${mailOptions.to}. MessageId: ${info.messageId}`);
-      if (this.isDummy) {
-          console.log("Preview Dummy Email URL: %s", nodemailer.getTestMessageUrl(info));
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Resend API returned an error');
       }
-      return info;
+
+      console.log(`[MAILER] Email successfully sent using Resend to: ${mailOptions.to}. Message ID: ${response.data.id}`);
+      return { messageId: response.data.id };
     } catch (error) {
-      console.error(`[MAILER] Email send failed to: ${mailOptions.to}. Error:`, error);
+      console.error(`[MAILER] Resend email send failed to: ${mailOptions.to}. Error:`, error);
       throw error;
     }
   }
