@@ -15,6 +15,7 @@ class Mailer {
             host: 'smtp.gmail.com',
             port: 587,
             secure: false, // false for 587 (STARTTLS)
+            family: 4, // Force IPv4 resolution
             auth: {
               user: process.env.EMAIL_USER,
               pass: process.env.EMAIL_PASS
