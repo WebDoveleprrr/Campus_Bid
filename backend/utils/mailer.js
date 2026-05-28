@@ -12,10 +12,15 @@ class Mailer {
       if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
           // Use Real SMTP Details if provided in .env
           this.transporter = nodemailer.createTransport({
-            service: 'gmail', // Standardizing on Gmail for ease
+            host: 'smtp.gmail.com',
+            port: 587,
+            secure: false, // false for 587 (STARTTLS)
             auth: {
               user: process.env.EMAIL_USER,
               pass: process.env.EMAIL_PASS
+            },
+            tls: {
+              rejectUnauthorized: false
             },
             connectionTimeout: 10000, // 10 seconds max connection timeout
             greetingTimeout: 10000,   // 10 seconds greeting timeout
