@@ -6,6 +6,7 @@ const multer = require('multer');
 const mailer = require('../utils/mailer');
 const { OAuth2Client } = require('google-auth-library');
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const protect = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
